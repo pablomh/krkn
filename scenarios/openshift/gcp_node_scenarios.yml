@@ -14,3 +14,10 @@ node_scenarios:
     timeout: 360
     duration: 120
     cloud_type: gcp
+  - actions:
+    - disk_detach_attach_scenario
+    node_name:
+    label_selector: node-role.kubernetes.io/worker
+    instance_count: 1
+    timeout: 120
+    cloud_type: gcp

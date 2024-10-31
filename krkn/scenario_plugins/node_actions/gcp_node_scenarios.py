@@ -47,6 +47,12 @@ class GCP:
         if instance.zone:
             return instance.zone.split("/")[-1]
 
+    # Get the instance disk
+    def get_boot_disk_device_name(self, instance):
+        print(instance.disks[0].device_name)
+        if instance.disks[0]:
+            return instance.disks[0].device_name
+
     # Get the instance name of the node
     def get_instance_id(self, node):
         instance = self.get_instance(node)
@@ -139,6 +145,44 @@ class GCP:
             logging.error(
                 "Failed to reboot node instance %s. Encountered following "
                 "exception: %s." % (instance_id, e)
+            )
+
+            raise RuntimeError()
+
+    # Detach a disk
+    def detach_disk(self, zone, instance_id, device):
+        try:
+            request = compute_v1.DetachDiskInstanceRequest(
+                device_name=device,
+                instance=instance_id,
+                project=self.project_id,
+                zone=zone,
+            )
+            self.instance_client.detach_disk(request=request)
+            logging.info("disk " + str(device) + " detached")
+        except Exception as e:
+            logging.error(
+                "Failed to detach disk %s. Encountered following "
+                "exception: %s." % (device, e)
+            )
+
+            raise RuntimeError()
+
+    # Attach a disk
+    def attach_disk(self, zone, instance_id, device):
+        try:
+            request = compute_v1.AttachDiskInstanceRequest(
+                device_name=device,
+                instance=instance_id,
+                project=self.project_id,
+                zone=zone,
+            )
+            self.instance_client.attach_disk(request=request)
+            logging.info("disk " + str(device) + " attached")
+        except Exception as e:
+            logging.error(
+                "Failed to attached disk %s. Encountered following "
+                "exception: %s." % (device, e)
             )
 
             raise RuntimeError()
@@ -310,5 +354,61 @@ class gcp_node_scenarios(abstract_node_scenarios):
                     " %s. Test Failed" % (e)
                 )
                 logging.error("node_reboot_scenario injection failed!")
+
+                raise RuntimeError()
+
+    # Node scenario to detach the disk
+    def disk_detach_scenario(self, instance_kill_count, node, timeout):
+        for _ in range(instance_kill_count):
+            try:
+                logging.info("Starting disk_detach_scenario injection")
+                instance = self.gcp.get_instance(node)
+                instance_id = self.gcp.get_name(instance)
+                zone = self.gcp.get_zone(instance)
+                device_name = self.gcp.get_boot_disk_device_name(instance)
+                logging.info(
+                    "Detaching the %s disk the node %s with instance ID: %s "
+                    % (device_name, node, instance_id)
+                )
+                self.gcp.detach_disk(zone, instance_id, device_name)
+                # nodeaction.wait_for_ready_status(node, timeout, self.kubecli)
+                logging.info(
+                    "Disk with name: %s has been detached" % device_name
+                )
+                logging.info("disk_detach_scenario has been successfuly injected!")
+            except Exception as e:
+                logging.error(
+                    "Failed to detach disk. Encountered following exception:"
+                    " %s. Test Failed" % (e)
+                )
+                logging.error("disk_detach_scenario injection failed!")
+
+                raise RuntimeError()
+
+    # Node scenario to attach the disk
+    def disk_attach_scenario(self, instance_kill_count, node, timeout):
+        for _ in range(instance_kill_count):
+            try:
+                logging.info("Starting disk_attach_scenario injection")
+                instance = self.gcp.get_instance(node)
+                instance_id = self.gcp.get_name(instance)
+                zone = self.gcp.get_zone(instance)
+                device_name = self.gcp.get_boot_disk_device_name(instance)
+                logging.info(
+                    "Attaching the %s disk the node %s with instance ID: %s "
+                    % (device_name, node, instance_id)
+                )
+                self.gcp.attach_disk(zone, instance_id, device_name)
+                nodeaction.wait_for_ready_status(node, timeout, self.kubecli)
+                logging.info(
+                    "Disk with name: %s has been attached" % device_name
+                )
+                logging.info("disk_attach_scenario has been successfuly injected!")
+            except Exception as e:
+                logging.error(
+                    "Failed to attach disk. Encountered following exception:"
+                    " %s. Test Failed" % (e)
+                )
+                logging.error("disk_attach_scenario injection failed!")
 
                 raise RuntimeError()

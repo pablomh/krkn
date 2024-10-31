@@ -126,7 +126,7 @@ class NodeActionsScenarioPlugin(AbstractScenarioPlugin):
         instance_kill_count = get_yaml_item_value(node_scenario, "instance_count", 1)
         node_name = get_yaml_item_value(node_scenario, "node_name", "")
         label_selector = get_yaml_item_value(node_scenario, "label_selector", "")
-        if action == "node_stop_start_scenario":
+        if action in ("node_stop_start_scenario", "disk_detach_attach_scenario"):
             duration = get_yaml_item_value(node_scenario, "duration", 120)
         timeout = get_yaml_item_value(node_scenario, "timeout", 120)
         service = get_yaml_item_value(node_scenario, "service", "")
@@ -168,6 +168,10 @@ class NodeActionsScenarioPlugin(AbstractScenarioPlugin):
                         )
                     elif action == "node_reboot_scenario":
                         node_scenario_object.node_reboot_scenario(
+                            run_kill_count, single_node, timeout
+                        )
+                    elif action == "disk_detach_attach_scenario":
+                        node_scenario_object.disk_detach_attach_scenario(
                             run_kill_count, single_node, timeout
                         )
                     elif action == "stop_start_kubelet_scenario":
